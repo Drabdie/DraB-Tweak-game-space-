@@ -1,0 +1,62 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.drabdie.tweak"
+4    android:versionCode="1"
+5    android:versionName="1.0.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="26"
+9        android:targetSdkVersion="35" />
+10
+11    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+11-->/tmp/dra-b-tweak/app/src/main/AndroidManifest.xml:2:5-161
+11-->/tmp/dra-b-tweak/app/src/main/AndroidManifest.xml:2:22-75
+12    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+12-->/tmp/dra-b-tweak/app/src/main/AndroidManifest.xml:3:5-73
+12-->/tmp/dra-b-tweak/app/src/main/AndroidManifest.xml:3:22-70
+13
+14    <application
+14-->/tmp/dra-b-tweak/app/src/main/AndroidManifest.xml:4:5-11:19
+15        android:allowBackup="true"
+15-->/tmp/dra-b-tweak/app/src/main/AndroidManifest.xml:4:77-103
+16        android:debuggable="true"
+17        android:extractNativeLibs="false"
+18        android:label="DraB Tweak"
+18-->/tmp/dra-b-tweak/app/src/main/AndroidManifest.xml:4:50-76
+19        android:supportsRtl="true"
+19-->/tmp/dra-b-tweak/app/src/main/AndroidManifest.xml:4:104-130
+20        android:theme="@style/AppTheme" >
+20-->/tmp/dra-b-tweak/app/src/main/AndroidManifest.xml:4:18-49
+21        <provider
+21-->/tmp/dra-b-tweak/app/src/main/AndroidManifest.xml:5:9-167
+22            android:name="rikka.shizuku.ShizukuProvider"
+22-->/tmp/dra-b-tweak/app/src/main/AndroidManifest.xml:5:19-63
+23            android:authorities="com.drabdie.tweak.shizuku"
+23-->/tmp/dra-b-tweak/app/src/main/AndroidManifest.xml:5:64-111
+24            android:exported="true"
+24-->/tmp/dra-b-tweak/app/src/main/AndroidManifest.xml:5:112-135
+25            android:multiprocess="false" />
+25-->/tmp/dra-b-tweak/app/src/main/AndroidManifest.xml:5:136-164
+26
+27        <activity
+27-->/tmp/dra-b-tweak/app/src/main/AndroidManifest.xml:6:9-10:20
+28            android:name="com.drabdie.tweak.MainActivity"
+28-->/tmp/dra-b-tweak/app/src/main/AndroidManifest.xml:6:19-47
+29            android:exported="true"
+29-->/tmp/dra-b-tweak/app/src/main/AndroidManifest.xml:6:85-108
+30            android:screenOrientation="portrait" >
+30-->/tmp/dra-b-tweak/app/src/main/AndroidManifest.xml:6:48-84
+31            <intent-filter>
+31-->/tmp/dra-b-tweak/app/src/main/AndroidManifest.xml:7:13-9:29
+32                <action android:name="android.intent.action.MAIN" />
+32-->/tmp/dra-b-tweak/app/src/main/AndroidManifest.xml:8:17-69
+32-->/tmp/dra-b-tweak/app/src/main/AndroidManifest.xml:8:25-66
+33
+34                <category android:name="android.intent.category.LAUNCHER" />
+34-->/tmp/dra-b-tweak/app/src/main/AndroidManifest.xml:8:69-129
+34-->/tmp/dra-b-tweak/app/src/main/AndroidManifest.xml:8:79-126
+35            </intent-filter>
+36        </activity>
+37    </application>
+38
+39</manifest>

@@ -1,2 +1,29 @@
-# DraB-Tweak-game-space-
-Game tuner and game space with utilites.
+# DraB Tweak
+
+Профессиональный no-root Android system manager с опциональной интеграцией Shizuku.
+
+## Реализовано
+
+- Профили Performance, Balanced, Battery, Game Mode и Custom.
+- Быстрое переключение профилей с сохранением выбранного состояния.
+- Живой мониторинг доступной RAM и заряда батареи.
+- Навигация Home / Monitor / Tools.
+- Проверка состояния Shizuku и запрос разрешения.
+- Переход к системным настройкам дисплея для безопасных действий без root.
+- Отдельная маркировка возможностей без root, через Shizuku и только с root.
+- Тёмный интерфейс, адаптивная нативная разметка, русский-ready архитектура.
+
+Приложение намеренно не имитирует доступ к CPU governor, GPU frequency или `/sys`: неподдерживаемые операции должны оставаться честно недоступными.
+
+## Сборка
+
+```bash
+export ANDROID_SDK_ROOT=/path/to/android-sdk
+/path/to/gradle-8.10.2/bin/gradle assembleDebug
+```
+
+APK появится в `app/build/outputs/apk/debug/app-debug.apk`.
+
+## Ограничения
+
+Минимальная версия Android — API 26. Доступность shell-действий через Shizuku зависит от версии Android и прошивки производителя. Приложение не требует root и не выполняет необратимых низкоуровневых изменений.

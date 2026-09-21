@@ -1,0 +1,7 @@
+com.drabdie.tweak.app-pngs-0 /tmp/dra-b-tweak/app/build/generated/res/pngs/debug
+com.drabdie.tweak.app-resValues-1 /tmp/dra-b-tweak/app/build/generated/res/resValues/debug
+com.drabdie.tweak.app-mergeDebugResources-2 /tmp/dra-b-tweak/app/build/intermediates/incremental/debug/mergeDebugResources/merged.dir
+com.drabdie.tweak.app-mergeDebugResources-3 /tmp/dra-b-tweak/app/build/intermediates/incremental/debug/mergeDebugResources/stripped.dir
+com.drabdie.tweak.app-debug-4 /tmp/dra-b-tweak/app/build/intermediates/merged_res/debug/mergeDebugResources
+com.drabdie.tweak.app-debug-5 /tmp/dra-b-tweak/app/src/debug/res
+com.drabdie.tweak.app-main-6 /tmp/dra-b-tweak/app/src/main/res
