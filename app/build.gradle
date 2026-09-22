@@ -1,9 +1,13 @@
 plugins { id 'com.android.application' }
 
 android { namespace 'com.drabdie.tweak'; compileSdk 35
-    defaultConfig { applicationId 'com.drabdie.tweak'; minSdk 24; targetSdk 35; versionCode 3; versionName '1.0.2' }
+    buildFeatures { aidl true }
+    lint { disable 'ProtectedPermissions' // PACKAGE_USAGE_STATS is granted via AppOps (Usage Access screen), manifest declaration is the required pattern
+    }
+    defaultConfig { applicationId 'com.drabdie.tweak'; minSdk 24; targetSdk 35; versionCode 4; versionName '1.1.0' }
 }
 
 dependencies {
     implementation 'dev.rikka.shizuku:api:13.1.5'
+    implementation 'dev.rikka.shizuku:provider:13.1.5'
 }
