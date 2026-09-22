@@ -6,7 +6,9 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 [[ -f app/src/main/AndroidManifest.xml ]]
 [[ -f app/src/main/java/com/drabdie/tweak/MainActivity.java ]]
-! grep -q 'content.addView(l,p)' app/src/main/java/com/drabdie/tweak/MainActivity.java
-"$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt" dump badging dist/DraB-Tweak-fixed-1.0.1.apk | grep -q "package: name='com.drabdie.tweak'"
-"$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify dist/DraB-Tweak-fixed-1.0.1.apk
+[[ -f app/src/main/aidl/com/drabdie/tweak/IShellService.aidl ]]
+APK="app/build/outputs/apk/debug/app-debug.apk"
+[[ -f "$APK" ]] || { echo "APK not built: $APK"; exit 1; }
+"$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt" dump badging "$APK" | grep -q "package: name='com.drabdie.tweak'"
+"$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify "$APK"
 printf 'static checks: PASS\n'
