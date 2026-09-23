@@ -5,3 +5,4 @@ local.properties
 .externalNativeBuild/
 .cxx/
 app/build/
+.gradle/
