@@ -1,134 +1,164 @@
 package com.drabdie.tweak;
 
-import android.app.ActivityManager;
+import android.app.Activity;
 import android.content.Context;
-import android.content.Intent;
 import android.content.IntentFilter;
-import android.os.BatteryManager;
-import android.os.Environment;
-import android.os.StatFs;
+import android.net.ConnectivityManager;
+import android.net.NetworkCapabilities;
+import android.os.Build;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
-import java.util.ArrayList;
-import java.util.List;
+import java.io.RandomAccessFile;
+import java.net.InetAddress;
 
 /**
- * Read-only device diagnostics: CPU load from /proc/stat, per-core
- * frequencies from sysfs (readable without root), RAM, battery and storage.
- * Nothing here writes anything.
+ * Advanced Hardware & Performance Monitor for HELLBOOST.
  */
-public final class DeviceMonitor {
+public class DeviceMonitor {
 
-    private long lastIdle = -1, lastTotal = -1;
-    private int cachedCpuCount = -1;
+    private long prevIdle = 0, prevTotal = 0;
 
-    /** CPU busy percent over the interval since the previous call (1s tick). */
+    /** Returns CPU load percentage (0..100) or -1 if unavailable. */
     public int cpuLoad() {
-        long[] s = readProcStat();
-        if (s == null) return -1;
-        long idle = s[0], total = s[1];
-        if (lastTotal < 0) { lastIdle = idle; lastTotal = total; return -1; }
-        long dIdle = idle - lastIdle, dTotal = total - lastTotal;
-        lastIdle = idle; lastTotal = total;
-        if (dTotal <= 0) return -1;
-        return (int) Math.max(0, Math.min(100, 100 - (dIdle * 100 / dTotal)));
-    }
+        try (RandomAccessFile file = new RandomAccessFile("/proc/stat", "r")) {
+            String line = file.readLine();
+            if (line == null || !line.startsWith("cpu ")) return -1;
+            String[] toks = line.split("\\s+");
+            long user = Long.parseLong(toks[1]);
+            long nice = Long.parseLong(toks[2]);
+            long sys  = Long.parseLong(toks[3]);
+            long idle = Long.parseLong(toks[4]);
+            long iowait = toks.length > 5 ? Long.parseLong(toks[5]) : 0;
+            long irq    = toks.length > 6 ? Long.parseLong(toks[6]) : 0;
+            long softirq= toks.length > 7 ? Long.parseLong(toks[7]) : 0;
 
-    private static long[] readProcStat() {
-        try (BufferedReader r = new BufferedReader(new FileReader("/proc/stat"))) {
-            String line = r.readLine(); // "cpu  user nice system idle iowait irq softirq steal ..."
-            if (line == null || !line.startsWith("cpu ")) return null;
-            String[] parts = line.split("\\s+");
-            long idle = 0, total = 0;
-            for (int i = 1; i < parts.length; i++) {
-                long v = Long.parseLong(parts[i]);
-                total += v;
-                if (i == 4 || i == 5) idle += v; // idle + iowait
-            }
-            return new long[]{idle, total};
-        } catch (Throwable t) {
-            return null;
-        }
-    }
+            long total = user + nice + sys + idle + iowait + irq + softirq;
+            long totalIdle = idle + iowait;
 
-    public int cpuCount() {
-        if (cachedCpuCount > 0) return cachedCpuCount;
-        try (BufferedReader r = new BufferedReader(new FileReader("/sys/devices/system/cpu/present"))) {
-            String present = r.readLine(); // e.g. "0-7"
-            int idx = present.indexOf('-');
-            cachedCpuCount = idx < 0 ? 1 : Integer.parseInt(present.substring(idx + 1)) + 1;
-        } catch (Throwable t) {
-            try (BufferedReader r = new BufferedReader(new FileReader("/proc/cpuinfo"))) {
-                int n = 0;
-                while (r.readLine() != null) if (r.ready()) n++;
-                cachedCpuCount = Math.max(1, Runtime.getRuntime().availableProcessors());
-            } catch (Throwable t2) {
-                cachedCpuCount = Math.max(1, Runtime.getRuntime().availableProcessors());
-            }
-        }
-        return cachedCpuCount;
-    }
+            long diffTotal = total - prevTotal;
+            long diffIdle  = totalIdle - prevIdle;
 
-    /** Current frequency (kHz) of one core, or -1 when not exposed by the OEM. */
-    public long coreFreq(int core) {
-        try (BufferedReader r = new BufferedReader(new FileReader(
-                "/sys/devices/system/cpu/cpu" + core + "/cpufreq/scaling_cur_freq"))) {
-            return Long.parseLong(r.readLine().trim());
+            prevTotal = total;
+            prevIdle  = totalIdle;
+
+            if (diffTotal <= 0) return 0;
+            int pct = (int) (100 * (diffTotal - diffIdle) / diffTotal);
+            return Math.max(0, Math.min(100, pct));
         } catch (Throwable t) {
             return -1;
         }
     }
 
-    /** Average frequency in MHz across cores that expose it, or -1. */
-    public int avgFreqMhz() {
-        long sum = 0; int n = 0;
-        for (int i = 0; i < cpuCount(); i++) {
-            long f = coreFreq(i);
-            if (f > 0) { sum += f; n++; }
-        }
-        return n == 0 ? -1 : (int) (sum / n / 1000);
+    /** Returns [availBytes, totalBytes]. */
+    public static long[] ram(Context context) {
+        try {
+            android.app.ActivityManager am = (android.app.ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+            android.app.ActivityManager.MemoryInfo mi = new android.app.ActivityManager.MemoryInfo();
+            if (am != null) {
+                am.getMemoryInfo(mi);
+                return new long[]{mi.availMem, mi.totalMem};
+            }
+        } catch (Throwable ignored) {}
+        return new long[]{0, 1};
     }
 
-    /** Max frequency in MHz across cores that expose it, or -1. */
+    /**
+     * Battery status: [levelPercent, tempTenthsC, currentMicroAmps].
+     */
+    public static Object[] battery(Context context) {
+        IntentFilter ifilter = new IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED);
+        android.content.Intent b = context.registerReceiver(null, ifilter);
+        int level = -1, temp = -1;
+        if (b != null) {
+            int raw = b.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1);
+            int scale = b.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, -1);
+            if (raw >= 0 && scale > 0) level = (raw * 100) / scale;
+            temp = b.getIntExtra(android.os.BatteryManager.EXTRA_TEMPERATURE, -1);
+        }
+        long microA = Long.MIN_VALUE;
+        try {
+            android.os.BatteryManager bm = (android.os.BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
+            if (bm != null) {
+                microA = bm.getLongProperty(android.os.BatteryManager.BATTERY_PROPERTY_CURRENT_NOW);
+            }
+        } catch (Throwable ignored) {}
+        return new Object[]{level, temp, microA};
+    }
+
+    /** Returns [availBytes, totalBytes] for internal storage. */
+    public static long[] storage() {
+        try {
+            File path = android.os.Environment.getDataDirectory();
+            android.os.StatFs stat = new android.os.StatFs(path.getPath());
+            long blockSize = stat.getBlockSizeLong();
+            long totalBlocks = stat.getBlockCountLong();
+            long availBlocks = stat.getAvailableBlocksLong();
+            return new long[]{availBlocks * blockSize, totalBlocks * blockSize};
+        } catch (Throwable t) {
+            return new long[]{0, 1};
+        }
+    }
+
+    public int cpuCount() {
+        int n = Runtime.getRuntime().availableProcessors();
+        return n > 0 ? n : 1;
+    }
+
+    public long coreFreq(int core) {
+        try (RandomAccessFile f = new RandomAccessFile("/sys/devices/system/cpu/cpu" + core + "/cpufreq/scaling_cur_freq", "r")) {
+            String l = f.readLine();
+            return l != null ? Long.parseLong(l.trim()) : -1;
+        } catch (Throwable t) {
+            return -1;
+        }
+    }
+
+    public int avgFreqMhz() {
+        int count = cpuCount();
+        long sum = 0;
+        int n = 0;
+        for (int i = 0; i < count; i++) {
+            long f = coreFreq(i);
+            if (f > 0) {
+                sum += f;
+                n++;
+            }
+        }
+        return n > 0 ? (int) (sum / n / 1000) : -1;
+    }
+
     public int maxFreqMhz() {
+        int count = cpuCount();
         long max = -1;
-        for (int i = 0; i < cpuCount(); i++) {
+        for (int i = 0; i < count; i++) {
             long f = coreFreq(i);
             if (f > max) max = f;
         }
-        return max < 0 ? -1 : (int) (max / 1000);
+        return max > 0 ? (int) (max / 1000) : -1;
     }
 
-    public static long[] ram(Context ctx) {
-        ActivityManager.MemoryInfo m = new ActivityManager.MemoryInfo();
-        ((ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE)).getMemoryInfo(m);
-        return new long[]{m.availMem, m.totalMem};
-    }
-
-    /** {level, tempTenthsC, currentMicroAmps}; temp/current may be unknown. */
-    public static Object[] battery(Context ctx) {
-        Intent i = ctx.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-        int level = -1, temp = -1;
-        if (i != null) {
-            int lv = i.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-            int sc = i.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-            if (lv >= 0 && sc > 0) level = lv * 100 / sc;
-            temp = i.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
-        }
-        BatteryManager bm = (BatteryManager) ctx.getSystemService(Context.BATTERY_SERVICE);
-        long current = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW);
-        return new Object[]{level, temp, current};
-    }
-
-    /** {freeBytes, totalBytes} of the data partition. */
-    public static long[] storage() {
+    /** Network latency check (Ping in ms). */
+    public static int pingMs() {
         try {
-            StatFs fs = new StatFs(Environment.getDataDirectory().getAbsolutePath());
-            return new long[]{fs.getAvailableBytes(), fs.getTotalBytes()};
+            long start = System.currentTimeMillis();
+            InetAddress address = InetAddress.getByName("8.8.8.8");
+            if (address.isReachable(800)) {
+                return (int) (System.currentTimeMillis() - start);
+            }
+        } catch (Throwable ignored) {}
+        return -1;
+    }
+
+    /** Get display refresh rate (Hz). */
+    public static int displayRefreshRate(Activity activity) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                return (int) activity.getDisplay().getRefreshRate();
+            } else {
+                return (int) activity.getWindowManager().getDefaultDisplay().getRefreshRate();
+            }
         } catch (Throwable t) {
-            return new long[]{0, 0};
+            return 60;
         }
     }
 }
